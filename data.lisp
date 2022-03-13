@@ -4,6 +4,12 @@
 (defparameter *data-path* "./kftt-data-1.0/data/")
 (defparameter *file-begins-with* "/kyoto-")
 
+(defmacro with-gensyms (syms &body body)
+  `(let ,(mapcar #'(lambda (s)
+                     `(,s (gensym)))
+                 syms)
+     ,@body))
+
 (defmacro kftt-data-path (type data-type language)
   `(concatenate 'string
 		*data-path*
@@ -33,8 +39,8 @@
       (list str))))
 
 (defun collect-tokens (data-type language)
-  (let ((w2i (make-hash-table))
-	(i2w (make-hash-table))
+  (let ((w2i (make-hash-table :test 'equal))
+	(i2w (make-hash-table :test 'equal))
 	(token-count 0))
     (with-open-file (f (kftt-data-path :tok data-type language) :external-format :utf8)
       (loop for line = (handler-case (read-line f nil nil)
@@ -47,3 +53,56 @@
 			  (incf token-count 1))))))
     (values w2i i2w)))
 
+(defmacro word2vector (dict sentence max-length)
+  (with-gensyms (translated-vector tokenized i)
+    `(let ((,translated-vector (make-array ,max-length :element-type 'integer))
+	   (,tokenized (split " " ,sentence)))
+       (dotimes (,i (length ,tokenized))
+	 (setf (aref ,translated-vector ,i)
+	       (gethash (nth ,i ,tokenized) ,dict)))
+       ,translated-vector)))
+
+(defmacro vector2word (dict vector)
+  (with-gensyms (translated-word i)
+    `(let ((,translated-word (make-array (length ,vector))))
+       (dotimes (,i (length ,vector))
+	 (setf (aref ,translated-word ,i)
+	       (gethash (nth ,i ,vector) ,dict)))
+       ,translated-word)))
+
+(defmacro with-open-kftt-file (line type data-type language &body body)
+  (with-gensyms (buffer)
+    `(with-open-file (,buffer (kftt-data-path ,type ,data-type ,language) :external-format :utf8)
+       (loop for ,line = (handler-case (read-line ,buffer nil nil)
+			   (error (_) (declare (ignore _)) nil))
+	     while ,line
+	     do ,@body))))
+
+(defmacro translate-into-vector (target data-type lang dict max-length)
+  (with-gensyms (line i)
+    `(let ((,i 0))
+      (with-open-kftt-file ,line :tok ,data-type ,lang
+				  (setf (aref ,target ,i)
+					(word2vector ,dict ,line ,max-length))
+				  (incf ,i 1)))))
+				   
+(defun init-train-datas (data-type lang1 lang2 lang1-w2i lang2-w2i data-size)
+  (let* ((max-length (max (calc-max-length :tok data-type lang1)
+			  (calc-max-length :tok data-type lang2)))
+	 (train-x (make-array data-size))
+	 (train-y (make-array data-size)))    
+    (translate-into-vector train-x data-type lang1 lang1-w2i max-length)
+    (translate-into-vector train-y data-type lang2 lang2-w2i max-length)
+    (values train-x train-y)))
+
+(defun calc-max-length (type data-type lang)
+  (let ((max-size 0))
+    (with-open-kftt-file line type data-type lang
+      (setq max-size (max max-size (length (split " " line)))))
+    max-size))
+
+(defun calc-data-size (type data-type lang)
+  (let ((data-size 0))
+    (with-open-kftt-file _ type data-type lang
+      (incf data-size 1))
+    data-size))
