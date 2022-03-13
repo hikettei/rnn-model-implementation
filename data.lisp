@@ -23,6 +23,7 @@
 		  (:test "test")
 		  (:train "train")
 		  (:tune "tune")
+		  (:devtest "devtest")
 		  (T (error "Invaild keyform")))
 		"."
 		(case ,language
