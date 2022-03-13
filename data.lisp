@@ -64,9 +64,8 @@
 
 (defmacro n2onehot (dict n)
   (with-gensyms (v)
-    `(let ((,v (make-array (hash-table-count ,dict) :element-type '(unsigned-byte 1))))
-       
-       (setf (aref ,v (if ,n ,n (gethash "<UNK>" w2i))) 1)
+    `(let ((,v (make-array (list (hash-table-count ,dict) 1) :initial-element 0.0 :element-type 'single-float)))
+       (setf (aref ,v (if ,n ,n (gethash "<UNK>" w2i)) 0) 1.0)
        ,v)))
 
 (defmacro onehot2n (onehot)
