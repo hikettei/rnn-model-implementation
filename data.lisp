@@ -1,5 +1,5 @@
 
-(in-package :rnn-model)
+(in-package :translate-model)
 
 (defparameter *data-path* "./kftt-data-1.0/data/")
 (defparameter *file-begins-with* "/kyoto-")
