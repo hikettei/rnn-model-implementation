@@ -36,8 +36,9 @@
   (let ((w2i (make-hash-table))
 	(i2w (make-hash-table))
 	(token-count 0))
-    (with-open-file (f (kftt-data-path :tok data-type language))
-      (loop for line = (read-line f nil)
+    (with-open-file (f (kftt-data-path :tok data-type language) :external-format :utf8)
+      (loop for line = (handler-case (read-line f nil nil)
+			 (error (_) (declare (ignore _)) nil))
 	    while line
 	    do (dolist (l (split " " line))
 		 (unless (gethash l w2i)
@@ -45,3 +46,4 @@
 			  (setf (gethash token-count i2w) l)
 			  (incf token-count 1))))))
     (values w2i i2w)))
+
