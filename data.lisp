@@ -51,13 +51,23 @@
 			  (incf token-count 1))))))
     (values w2i i2w)))
 
+(defmacro n2onehot (dict n)
+  (with-gensyms (v)
+    `(let ((,v (make-array (hash-table-count ,dict) :element-type '(unsigned-byte 1))))
+       (if ,n (setf (aref ,v ,n) 1)
+	     (error "Detected: unknown word"))
+       ,v)))
+
+(defmacro onehot2n (onehot)
+  `(position 1 ,onehot))
+
 (defmacro word2vector (dict sentence max-length)
   (with-gensyms (translated-vector tokenized i)
-    `(let ((,translated-vector (make-array ,max-length :element-type 'integer))
+    `(let ((,translated-vector (make-array ,max-length))
 	   (,tokenized (split " " ,sentence)))
        (dotimes (,i (length ,tokenized))
 	 (setf (aref ,translated-vector ,i)
-	       (gethash (nth ,i ,tokenized) ,dict)))
+	       (n2onehot ,dict (gethash (nth ,i ,tokenized) ,dict))))
        ,translated-vector)))
 
 (defmacro vector2word (dict vector)
@@ -65,7 +75,7 @@
     `(let ((,translated-word (make-array (length ,vector))))
        (dotimes (,i (length ,vector))
 	 (setf (aref ,translated-word ,i)
-	       (gethash (nth ,i ,vector) ,dict)))
+	       (onehot2n (gethash (nth ,i ,vector) ,dict))))
        ,translated-word)))
 
 (defmacro with-open-kftt-file (line type data-type language &body body)
@@ -88,7 +98,8 @@
   (let* ((max-length (max (calc-max-length :tok data-type lang1)
 			  (calc-max-length :tok data-type lang2)))
 	 (train-x (make-array data-size))
-	 (train-y (make-array data-size)))    
+	 (train-y (make-array data-size)))
+    
     (translate-into-vector train-x data-type lang1 w2i max-length)
     (translate-into-vector train-y data-type lang2 w2i max-length)
     (values train-x train-y)))

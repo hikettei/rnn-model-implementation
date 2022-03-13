@@ -7,7 +7,7 @@
 (defmacro mvalues (&rest args)
   `(multiple-value-call #'values ,@args))
 
-(defun train (data-type lang1 lang2)
+(defun prepare-train-param (data-type lang1 lang2)
   (let ((max-length (max (calc-max-length :tok data-type :en)
 			 (calc-max-length :tok data-type :ja)))
 	(data-size (calc-data-size :tok data-type lang1)))
@@ -20,5 +20,10 @@
 
 	(multiple-value-bind (train-x train-y)
 	    (init-train-datas data-type lang1 lang2 w2i data-size)
-        (aref train-y 0)
-	)))))
+
+
+	  (values train-x train-y w2i i2w data-size))))))
+
+(defun train (data-type lang1 lang2)
+  (multiple-value-bind (train-x train-y w2i i2w data-size) (prepare-train-param data-type lang1 lang2)
+    ))
