@@ -39,7 +39,7 @@
       (list str))))
 
 (defun collect-tokens (data-type language &optional (w2i (make-hash-table :test 'equal)) (i2w (make-hash-table :test 'equal)))
-  (let ((token-count 0))
+  (let ((token-count (1+ (hash-table-count i2w))))
     (with-open-file (f (kftt-data-path :tok data-type language) :external-format :utf8)
       (loop for line = (handler-case (read-line f nil nil)
 			 (error (_) (declare (ignore _)) nil))
@@ -51,11 +51,22 @@
 			  (incf token-count 1))))))
     (values w2i i2w)))
 
+(defmacro register-word (w2i i2w word)
+  (with-gensyms (s)
+    `(let ((,s (hash-table-count ,w2i)))
+       (setf (gethash ,word ,w2i) (1+ ,s))
+       (setf (gethash (1+ ,s) ,i2w) ,word)
+       
+       ; Assure oneness
+       (unless (= (hash-table-count ,w2i)
+		  (hash-table-count ,i2w))
+	 (error "incorrect word count")))))
+
 (defmacro n2onehot (dict n)
   (with-gensyms (v)
     `(let ((,v (make-array (hash-table-count ,dict) :element-type '(unsigned-byte 1))))
-       (if ,n (setf (aref ,v ,n) 1)
-	     (error "Detected: unknown word"))
+       
+       (setf (aref ,v (if ,n ,n (gethash "<UNK>" w2i))) 1)
        ,v)))
 
 (defmacro onehot2n (onehot)
@@ -68,6 +79,8 @@
        (dotimes (,i (length ,tokenized))
 	 (setf (aref ,translated-vector ,i)
 	       (n2onehot ,dict (gethash (nth ,i ,tokenized) ,dict))))
+       (setf (aref ,translated-vector (length ,tokenized))
+	     (n2onehot ,dict (gethash "<EOS>" ,dict)))
        ,translated-vector)))
 
 (defmacro vector2word (dict vector)
@@ -109,7 +122,8 @@
   (let ((max-size 0))
     (with-open-kftt-file line type data-type lang
       (setq max-size (max max-size (length (split " " line)))))
-    max-size))
+    ; In the end of sequence, we allocate the place for <EOS>
+    (1+ max-size)))
 
 (defun calc-data-size (type data-type lang)
   (let ((data-size 0))

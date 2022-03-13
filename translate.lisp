@@ -18,12 +18,14 @@
 	(unless (= data-size (calc-data-size :tok data-type lang2))
 	  (error "Incorresponding the number of data-size between lang1 and lang2"))
 
+	(register-word w2i i2w "<EOS>")
+	(register-word w2i i2w "<UNK>")
+	
 	(multiple-value-bind (train-x train-y)
 	    (init-train-datas data-type lang1 lang2 w2i data-size)
 
-
-	  (values train-x train-y w2i i2w data-size))))))
+	  (values train-x train-y w2i i2w data-size max-length))))))
 
 (defun train (data-type lang1 lang2)
-  (multiple-value-bind (train-x train-y w2i i2w data-size) (prepare-train-param data-type lang1 lang2)
+  (multiple-value-bind (train-x train-y w2i i2w data-size max-length) (prepare-train-param data-type lang1 lang2)
     ))
