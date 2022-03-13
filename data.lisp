@@ -38,10 +38,8 @@
             (split x (subseq str (+ pos size))))
       (list str))))
 
-(defun collect-tokens (data-type language)
-  (let ((w2i (make-hash-table :test 'equal))
-	(i2w (make-hash-table :test 'equal))
-	(token-count 0))
+(defun collect-tokens (data-type language &optional (w2i (make-hash-table :test 'equal)) (i2w (make-hash-table :test 'equal)))
+  (let ((token-count 0))
     (with-open-file (f (kftt-data-path :tok data-type language) :external-format :utf8)
       (loop for line = (handler-case (read-line f nil nil)
 			 (error (_) (declare (ignore _)) nil))
@@ -86,14 +84,15 @@
 					(word2vector ,dict ,line ,max-length))
 				  (incf ,i 1)))))
 				   
-(defun init-train-datas (data-type lang1 lang2 lang1-w2i lang2-w2i data-size)
+(defun init-train-datas (data-type lang1 lang2 w2i data-size)
   (let* ((max-length (max (calc-max-length :tok data-type lang1)
 			  (calc-max-length :tok data-type lang2)))
 	 (train-x (make-array data-size))
 	 (train-y (make-array data-size)))    
-    (translate-into-vector train-x data-type lang1 lang1-w2i max-length)
-    (translate-into-vector train-y data-type lang2 lang2-w2i max-length)
+    (translate-into-vector train-x data-type lang1 w2i max-length)
+    (translate-into-vector train-y data-type lang2 w2i max-length)
     (values train-x train-y)))
+
 
 (defun calc-max-length (type data-type lang)
   (let ((max-size 0))
